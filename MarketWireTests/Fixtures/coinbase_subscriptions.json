@@ -1,0 +1,13 @@
+{
+  "type": "subscriptions",
+  "channels": [
+    {
+      "name": "ticker",
+      "product_ids": ["BTC-USD", "ETH-USD"]
+    },
+    {
+      "name": "heartbeat",
+      "product_ids": ["BTC-USD"]
+    }
+  ]
+}
