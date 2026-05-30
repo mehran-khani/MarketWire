@@ -29,6 +29,6 @@ The app focuses on live market state, connection health, favorites, local alerts
 
 ```sh
 swiftlint
-xcodebuild -scheme MarketWire -destination 'platform=iOS Simulator,name=iPhone 16' build
-xcodebuild -scheme MarketWire -destination 'platform=iOS Simulator,name=iPhone 16' test
+xcodebuild -scheme MarketWire -destination 'platform=iOS Simulator,name=iPhone 17' build
+xcodebuild -scheme MarketWire -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```

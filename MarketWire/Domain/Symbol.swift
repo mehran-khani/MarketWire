@@ -1,6 +1,6 @@
 import Foundation
 
-struct Symbol: Identifiable, Hashable, Sendable {
+nonisolated struct Symbol: Identifiable, Hashable, Sendable {
     let id: String
     let base: String
     let quote: String

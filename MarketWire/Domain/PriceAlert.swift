@@ -1,7 +1,7 @@
 import Foundation
 
-struct PriceAlert: Identifiable, Equatable, Sendable {
-    enum Condition: String, Sendable, Equatable {
+nonisolated struct PriceAlert: Identifiable, Equatable, Sendable {
+    nonisolated enum Condition: String, Sendable, Equatable {
         case above
         case below
     }

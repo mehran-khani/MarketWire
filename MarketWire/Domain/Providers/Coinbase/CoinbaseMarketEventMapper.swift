@@ -1,36 +1,38 @@
 import Foundation
 
-enum CoinbaseMarketEventMapper {
+nonisolated enum CoinbaseMarketEventMapper {
     static func event(from message: CoinbaseInboundMessage) -> MarketEvent? {
         switch message {
         case let .subscriptions(dto):
             return .subscribed(channels: dto.channels.map(\.name))
 
         case let .ticker(dto):
-            guard let price = decimal(dto.price), let time = date(dto.time) else {
+            guard let price = WireParsing.decimal(dto.price),
+                  let time = WireParsing.iso8601Date(dto.time)
+            else {
                 return nil
             }
             return .ticker(
                 TickerSnapshot(
                     symbolID: dto.productID,
                     price: price,
-                    open24h: decimal(dto.open24h),
-                    high24h: decimal(dto.high24h),
-                    low24h: decimal(dto.low24h),
-                    volume24h: decimal(dto.volume24h),
-                    bestBid: decimal(dto.bestBid),
-                    bestAsk: decimal(dto.bestAsk),
-                    lastSize: decimal(dto.lastSize),
+                    open24h: WireParsing.decimal(dto.open24h),
+                    high24h: WireParsing.decimal(dto.high24h),
+                    low24h: WireParsing.decimal(dto.low24h),
+                    volume24h: WireParsing.decimal(dto.volume24h),
+                    bestBid: WireParsing.decimal(dto.bestBid),
+                    bestAsk: WireParsing.decimal(dto.bestAsk),
+                    lastSize: WireParsing.decimal(dto.lastSize),
                     side: dto.side.flatMap(TradeSide.init(rawValue:)),
                     time: time
                 )
             )
 
         case let .match(dto):
-            guard let price = decimal(dto.price),
-                  let size = decimal(dto.size),
+            guard let price = WireParsing.decimal(dto.price),
+                  let size = WireParsing.decimal(dto.size),
                   let side = TradeSide(rawValue: dto.side),
-                  let time = date(dto.time)
+                  let time = WireParsing.iso8601Date(dto.time)
             else {
                 return nil
             }
@@ -40,7 +42,7 @@ enum CoinbaseMarketEventMapper {
             )
 
         case let .heartbeat(dto):
-            guard let time = date(dto.time) else {
+            guard let time = WireParsing.iso8601Date(dto.time) else {
                 return nil
             }
             return .heartbeat(
@@ -53,25 +55,5 @@ enum CoinbaseMarketEventMapper {
         case .unsupported:
             return nil
         }
-    }
-
-    private static let posix = Locale(identifier: "en_US_POSIX")
-
-    private static func decimal(_ string: String?) -> Decimal? {
-        guard let string else {
-            return nil
-        }
-        return Decimal(string: string, locale: posix)
-    }
-
-    // Coinbase timestamps carry microsecond fractional seconds (e.g. 2022-10-19T23:28:22.061769Z).
-    private static let fractionalSeconds = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
-    private static let wholeSeconds = Date.ISO8601FormatStyle(includingFractionalSeconds: false)
-
-    private static func date(_ string: String) -> Date? {
-        if let parsed = try? fractionalSeconds.parse(string) {
-            return parsed
-        }
-        return try? wholeSeconds.parse(string)
     }
 }

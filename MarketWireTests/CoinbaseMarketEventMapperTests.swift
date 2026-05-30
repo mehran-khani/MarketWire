@@ -2,7 +2,6 @@ import Foundation
 @testable import MarketWire
 import Testing
 
-@MainActor
 struct CoinbaseMarketEventMapperTests {
     private let decoder = JSONDecoder()
     private let posix = Locale(identifier: "en_US_POSIX")
@@ -72,7 +71,7 @@ struct CoinbaseMarketEventMapperTests {
     }
 
     private func event(_ name: String) throws -> MarketEvent? {
-        let data = try Fixture.data(name)
+        let data = try Fixture.data(name, provider: .coinbase)
         let message = try decoder.decode(CoinbaseInboundMessage.self, from: data)
         return CoinbaseMarketEventMapper.event(from: message)
     }

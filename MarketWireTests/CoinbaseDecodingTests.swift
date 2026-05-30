@@ -2,7 +2,6 @@ import Foundation
 @testable import MarketWire
 import Testing
 
-@MainActor
 struct CoinbaseDecodingTests {
     private let decoder = JSONDecoder()
 
@@ -73,14 +72,14 @@ struct CoinbaseDecodingTests {
     }
 
     @Test func malformedMessageThrows() throws {
-        let data = try Fixture.data("coinbase_malformed")
+        let data = try Fixture.data("coinbase_malformed", provider: .coinbase)
         #expect(throws: (any Error).self) {
             try decoder.decode(CoinbaseInboundMessage.self, from: data)
         }
     }
 
     private func decode(_ name: String) throws -> CoinbaseInboundMessage {
-        let data = try Fixture.data(name)
+        let data = try Fixture.data(name, provider: .coinbase)
         return try decoder.decode(CoinbaseInboundMessage.self, from: data)
     }
 }

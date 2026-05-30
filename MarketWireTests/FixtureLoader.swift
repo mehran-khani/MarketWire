@@ -3,16 +3,20 @@ import Foundation
 private final class FixtureBundleAnchor {}
 
 enum Fixture {
+    enum Provider: String {
+        case coinbase = "Coinbase"
+        case okx = "OKX"
+    }
+
     enum FixtureError: Error {
         case notFound(String)
     }
 
-    static func data(_ name: String) throws -> Data {
+    static func data(_ name: String, provider: Provider) throws -> Data {
         let bundle = Bundle(for: FixtureBundleAnchor.self)
-        let url = bundle.url(forResource: name, withExtension: "json", subdirectory: "Fixtures")
-            ?? bundle.url(forResource: name, withExtension: "json")
-        guard let url else {
-            throw FixtureError.notFound(name)
+        let subdirectory = "Fixtures/\(provider.rawValue)"
+        guard let url = bundle.url(forResource: name, withExtension: "json", subdirectory: subdirectory) else {
+            throw FixtureError.notFound("\(subdirectory)/\(name).json")
         }
         return try Data(contentsOf: url)
     }

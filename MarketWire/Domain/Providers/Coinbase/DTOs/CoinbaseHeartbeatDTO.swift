@@ -1,4 +1,4 @@
-struct CoinbaseHeartbeatDTO: Decodable {
+nonisolated struct CoinbaseHeartbeatDTO: Decodable, Equatable, Sendable {
     let sequence: Int?
     let lastTradeID: Int?
     let productID: String
