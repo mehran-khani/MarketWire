@@ -1,0 +1,6 @@
+{
+  "event": "channel-conn-count",
+  "channel": "tickers",
+  "connCount": "1",
+  "connId": "example"
+}

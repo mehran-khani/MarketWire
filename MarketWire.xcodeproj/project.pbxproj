@@ -41,6 +41,9 @@
 		};
 		392738772FC9092300105669 /* MarketWireTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFolders = (
+				Fixtures,
+			);
 			path = MarketWireTests;
 			sourceTree = "<group>";
 		};

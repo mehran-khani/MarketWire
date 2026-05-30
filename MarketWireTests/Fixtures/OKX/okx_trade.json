@@ -1,0 +1,19 @@
+{
+  "arg": {
+    "channel": "trades",
+    "instId": "BTC-USDT"
+  },
+  "data": [
+    {
+      "instId": "BTC-USDT",
+      "tradeId": "1010874567",
+      "px": "73692.2",
+      "sz": "0.0000407",
+      "side": "buy",
+      "ts": "1780106782075",
+      "count": "1",
+      "source": "0",
+      "seqId": 76535643410
+    }
+  ]
+}

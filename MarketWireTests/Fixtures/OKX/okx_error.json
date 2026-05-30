@@ -1,0 +1,6 @@
+{
+  "event": "error",
+  "code": "60012",
+  "msg": "Invalid request: {\"op\": \"subscribe\", \"argss\":[{\"channel\" : \"tickers\", \"instId\" : \"LTC-USD-200327\"}]}",
+  "connId": "a4d3ae55"
+}
