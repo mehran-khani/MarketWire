@@ -1,6 +1,6 @@
 import Foundation
 
-struct OrderBook: Equatable, Sendable {
+nonisolated struct OrderBook: Equatable, Sendable {
     let symbolID: Symbol.ID
     let bids: [OrderBookLevel]
     let asks: [OrderBookLevel]

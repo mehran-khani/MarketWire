@@ -1,6 +1,6 @@
 import Foundation
 
-struct Trade: Identifiable, Equatable, Sendable {
+nonisolated struct Trade: Identifiable, Equatable, Sendable {
     let id: Int
     let symbolID: Symbol.ID
     let price: Decimal

@@ -1,4 +1,4 @@
-enum CoinbaseInboundMessage: Decodable {
+nonisolated enum CoinbaseInboundMessage: Decodable, Equatable, Sendable {
     case subscriptions(CoinbaseSubscriptionsDTO)
     case ticker(CoinbaseTickerDTO)
     case match(CoinbaseMatchDTO)

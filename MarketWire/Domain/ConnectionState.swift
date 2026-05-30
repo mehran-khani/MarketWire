@@ -1,6 +1,6 @@
 import Foundation
 
-enum ConnectionState: Equatable, Sendable {
+nonisolated enum ConnectionState: Equatable, Sendable {
     case idle
     case connecting
     case connected(since: Date)

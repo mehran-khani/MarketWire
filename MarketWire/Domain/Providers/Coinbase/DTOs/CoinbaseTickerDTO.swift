@@ -1,4 +1,4 @@
-struct CoinbaseTickerDTO: Decodable {
+nonisolated struct CoinbaseTickerDTO: Decodable, Equatable, Sendable {
     let sequence: Int?
     let productID: String
     let price: String
