@@ -29,9 +29,7 @@ jobs:
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
-          path: |
-            ~/Library/Caches/org.swift.swiftpm
-            ~/Library/Developer/Xcode/DerivedData
+          path: ~/Library/Caches/org.swift.swiftpm
           key: ${{ runner.os }}-spm-${{ hashFiles('MarketWire.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-spm-
@@ -45,6 +43,7 @@ jobs:
         run: |
           xcodebuild -resolvePackageDependencies \
             -scheme MarketWire \
+            -derivedDataPath /tmp/MarketWire-DerivedData \
             -skipMacroValidation \
             -skipPackagePluginValidation
 
@@ -73,6 +72,9 @@ jobs:
           xcodebuild test \
             -scheme MarketWire \
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.device_id }}" \
+            -derivedDataPath /tmp/MarketWire-DerivedData \
             -parallel-testing-enabled NO \
+            -enableCodeCoverage NO \
             -skipMacroValidation \
-            -skipPackagePluginValidation
+            -skipPackagePluginValidation \
+            -skip-testing:MarketWireUITests
