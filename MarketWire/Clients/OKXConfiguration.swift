@@ -10,10 +10,11 @@ nonisolated enum OKXConfiguration {
         return url
     }()
 
-    static let defaultSubscribeArgs: [OkxSubscribeArg] = [
-        OkxSubscribeArg(channel: "tickers", instId: "BTC-USDT"),
-        OkxSubscribeArg(channel: "trades", instId: "BTC-USDT")
-    ]
+    static let defaultSymbolIDs: [Symbol.ID] = ["BTC-USDT"]
+
+    static let defaultSubscribeArgs: [OkxSubscribeArg] = defaultSymbolIDs.map {
+        OkxSubscribeArg(channel: "tickers", instId: $0)
+    }
 
     static let connectTimeoutNanoseconds: UInt64 = 15_000_000_000
     static let pingIntervalNanoseconds: UInt64 = 20_000_000_000

@@ -1,22 +1,36 @@
 import ComposableArchitecture
 import Foundation
+import SwiftUI
 
 @Reducer
 struct AppFeature {
     @ObservableState
     struct State: Equatable {
-        static let debugSymbolID = "BTC-USDT"
+        var selectedSection: AppSection? = .markets
+        var columnVisibility: NavigationSplitViewVisibility = .automatic
+        var preferredCompactColumn: NavigationSplitViewColumn = .content
+        var detail: AssetDetailFeature.State?
 
         var connectionState: ConnectionState = .idle
-        var debugTicker: TickerSnapshot?
         var lastError: String?
+
+        var watchlist = WatchlistFeature.State()
+        var markets = MarketsFeature.State()
+        var alerts = AlertsFeature.State()
+        var settings = SettingsFeature.State()
     }
 
-    enum Action: Equatable {
+    enum Action: BindableAction, Equatable {
+        case binding(BindingAction<State>)
         case appStarted
+        case detailNavigationPop
         case marketEvent(MarketEvent)
         case streamFinished
-        case streamFailed(String)
+        case watchlist(WatchlistFeature.Action)
+        case markets(MarketsFeature.Action)
+        case alerts(AlertsFeature.Action)
+        case settings(SettingsFeature.Action)
+        case detail(AssetDetailFeature.Action)
     }
 
     private nonisolated enum CancelID: Hashable, Sendable {
@@ -26,8 +40,35 @@ struct AppFeature {
     @Dependency(\.date) var date
 
     var body: some Reducer<State, Action> {
+        BindingReducer()
+
+        Scope(state: \.watchlist, action: \.watchlist) {
+            WatchlistFeature()
+        }
+
+        Scope(state: \.markets, action: \.markets) {
+            MarketsFeature()
+        }
+
+        Scope(state: \.alerts, action: \.alerts) {
+            AlertsFeature()
+        }
+
+        Scope(state: \.settings, action: \.settings) {
+            SettingsFeature()
+        }
+
         Reduce { state, action in
             switch action {
+            case .binding:
+                return .none
+
+            case .detailNavigationPop:
+                guard state.detail != nil else { return .none }
+                state.detail = nil
+                state.preferredCompactColumn = .content
+                return .none
+
             case .appStarted:
                 switch state.connectionState {
                 case .connecting, .connected:
@@ -56,12 +97,10 @@ struct AppFeature {
                     state.lastError = nil
 
                 case let .ticker(snapshot):
-                    if snapshot.symbolID == State.debugSymbolID {
-                        state.debugTicker = snapshot
-                    }
                     if case .connecting = state.connectionState {
                         state.connectionState = .connected(since: date.now)
                     }
+                    state.applyTicker(snapshot)
 
                 case let .providerError(message):
                     state.connectionState = .failed(message: message)
@@ -84,11 +123,31 @@ struct AppFeature {
                 }
                 return .none
 
-            case let .streamFailed(message):
-                state.connectionState = .failed(message: message)
-                state.lastError = message
+            case let .markets(.delegate(.assetSelected(symbolID))):
+                state.detail = AssetDetailFeature.State(
+                    symbolID: symbolID,
+                    ticker: state.markets.tickerBySymbolID[symbolID]
+                )
+                state.preferredCompactColumn = .detail
+                return .none
+
+            case .markets:
+                return .none
+
+            case .detail(.delegate(.closeRequested)):
+                state.detail = nil
+                state.preferredCompactColumn = .content
+                return .none
+
+            case .detail:
+                return .none
+
+            case .watchlist, .alerts, .settings:
                 return .none
             }
+        }
+        .ifLet(\.detail, action: \.detail) {
+            AssetDetailFeature()
         }
     }
 }

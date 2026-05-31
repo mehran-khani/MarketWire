@@ -1,155 +1,160 @@
 import ComposableArchitecture
 import SwiftUI
 
-private enum SidebarSection: String, CaseIterable, Hashable, Identifiable {
-    case watchlist
-    case markets
-    case alerts
+struct AppView: View {
+    @Bindable var store: StoreOf<AppFeature>
 
-    var id: String { rawValue }
+    private var activeSection: AppSection {
+        store.selectedSection ?? .markets
+    }
 
-    var title: String {
-        switch self {
-        case .watchlist: "Watchlist"
-        case .markets: "Markets"
-        case .alerts: "Alerts"
+    var body: some View {
+        NavigationSplitView(
+            columnVisibility: $store.columnVisibility,
+            preferredCompactColumn: $store.preferredCompactColumn
+        ) {
+            sidebar
+        } content: {
+            contentColumn
+                .navigationTitle(activeSection.title)
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        ConnectionStatusControl(
+                            connectionState: store.connectionState,
+                            lastError: store.lastError,
+                            onReconnect: { store.send(.appStarted) }
+                        )
+                    }
+                }
+        } detail: {
+            detailColumn
+        }
+        .task {
+            store.send(.appStarted)
+        }
+        .onChange(of: store.preferredCompactColumn) { oldColumn, newColumn in
+            // System back on compact updates the binding only — clear TCA detail when leaving the detail column.
+            guard oldColumn == .detail, newColumn == .content, store.detail != nil else { return }
+            store.send(.detailNavigationPop)
         }
     }
 
-    var systemImage: String {
-        switch self {
-        case .watchlist: "star"
-        case .markets: "chart.line.uptrend.xyaxis"
-        case .alerts: "bell"
+    private var sidebar: some View {
+        List(selection: $store.selectedSection) {
+            ForEach(AppSection.allCases) { section in
+                NavigationLink(value: section) {
+                    Label(section.title, systemImage: section.systemImage)
+                }
+            }
+        }
+        .navigationTitle("MarketWire")
+    }
+
+    @ViewBuilder
+    private var contentColumn: some View {
+        switch activeSection {
+        case .watchlist:
+            WatchlistView(
+                store: store.scope(state: \.watchlist, action: \.watchlist)
+            )
+        case .markets:
+            MarketsView(
+                store: store.scope(state: \.markets, action: \.markets),
+                connectionState: store.connectionState
+            )
+        case .alerts:
+            AlertsView(
+                store: store.scope(state: \.alerts, action: \.alerts)
+            )
+        case .settings:
+            SettingsView(
+                store: store.scope(state: \.settings, action: \.settings)
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var detailColumn: some View {
+        if let detailStore = store.scope(state: \.detail, action: \.detail) {
+            AssetDetailView(store: detailStore)
+        } else {
+            SectionPlaceholderView(
+                title: "Detail",
+                subtitle: "Select a symbol from Markets to open asset detail."
+            )
         }
     }
 }
 
-struct AppView: View {
-    @Bindable var store: StoreOf<AppFeature>
-    @State private var selectedSection: SidebarSection? = .markets
+private struct ConnectionStatusControl: View {
+    let connectionState: ConnectionState
+    let lastError: String?
+    let onReconnect: () -> Void
+
+    private var canReconnect: Bool {
+        switch connectionState {
+        case .disconnected, .failed:
+            true
+        default:
+            false
+        }
+    }
 
     var body: some View {
-        NavigationSplitView {
-            List(selection: $selectedSection) {
-                ForEach(SidebarSection.allCases) { section in
-                    NavigationLink(value: section) {
-                        Label(section.title, systemImage: section.systemImage)
-                    }
+        Group {
+            if canReconnect {
+                Button(action: onReconnect) {
+                    statusLabel
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint("Double tap to reconnect")
+            } else {
+                statusLabel
             }
-            .navigationTitle("MarketWire")
-        } detail: {
-            Group {
-                switch selectedSection {
-                case .markets:
-                    marketsDebugDetail
-                case .watchlist:
-                    sectionPlaceholder(
-                        title: "Watchlist",
-                        subtitle: "Favorites will appear here in a later phase."
-                    )
-                case .alerts:
-                    sectionPlaceholder(
-                        title: "Alerts",
-                        subtitle: "Price alerts will appear here in a later phase."
-                    )
-                case .none:
-                    sectionPlaceholder(
-                        title: "MarketWire",
-                        subtitle: "Select a section from the sidebar."
-                    )
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("connection-status")
+        .accessibilityLabel(accessibilityLabelText)
+        .help(lastError ?? "")
     }
 
-    private var marketsDebugDetail: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("Markets")
-                    .font(.largeTitle.weight(.semibold))
-                    .fontDesign(.serif)
-
-                Text("Live stream debug (BTC-USDT)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Label(connectionLabel, systemImage: connectionSymbol)
-                        .font(.headline)
-                        .foregroundStyle(connectionColor)
-
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("BTC-USDT")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(debugPriceText)
-                            .font(.title.monospacedDigit().weight(.semibold))
-                            .contentTransition(.numericText(value: Double(debugPriceText) ?? Double(1)))
-                            .animation(.bouncy, value: debugPriceText)
-                    }
-
-                    if let lastError = store.lastError {
-                        Text(lastError)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                .background(.regularMaterial, in: .rect(cornerRadius: 12))
-            }
-            .padding()
-        }
-        .onAppear {
-            store.send(.appStarted)
-        }
+    private var statusLabel: some View {
+        Label(connectionLabel, systemImage: connectionSymbol)
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(connectionColor)
     }
 
-    private func sectionPlaceholder(title: String, subtitle: String) -> some View {
-        VStack(spacing: 12) {
-            Text(title)
-                .font(.largeTitle.weight(.semibold))
-                .fontDesign(.serif)
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+    private var accessibilityLabelText: String {
+        if let lastError, !lastError.isEmpty {
+            return "\(connectionLabel). \(lastError)"
         }
-        .padding()
+        return connectionLabel
     }
 
     private var connectionLabel: String {
-        switch store.connectionState {
+        switch connectionState {
         case .idle:
             "Idle"
         case .connecting:
             "Connecting…"
         case .connected:
             "Live"
-        case let .reconnecting(attempt, _):
-            "Reconnecting (\(attempt))…"
-        case .stale:
-            "Stale"
         case let .disconnected(reason):
-            reason.map { "Disconnected: \($0)" } ?? "Disconnected"
+            reason.map { "Disconnected: \($0). Tap to reconnect." } ?? "Disconnected. Tap to reconnect."
         case let .failed(message):
-            "Failed: \(message)"
+            "Failed: \(message). Tap to reconnect."
         }
     }
 
     private var connectionSymbol: String {
-        switch store.connectionState {
+        switch connectionState {
         case .connected:
-//            "dot.radiowaves.left.and.right"
             "wifi"
-        case .connecting, .reconnecting:
+        case .connecting:
             "arrow.triangle.2.circlepath"
         case .failed:
             "exclamationmark.triangle"
-        case .stale, .disconnected:
+        case .disconnected:
             "wifi.slash"
         case .idle:
             "circle"
@@ -157,27 +162,16 @@ struct AppView: View {
     }
 
     private var connectionColor: Color {
-        switch store.connectionState {
+        switch connectionState {
         case .connected:
             .green
-        case .connecting, .reconnecting:
+        case .connecting:
             .orange
         case .failed:
             .red
-        case .stale, .disconnected, .idle:
+        case .disconnected, .idle:
             .secondary
         }
-    }
-
-    private var debugPriceText: String {
-        guard let price = store.debugTicker?.price else {
-            return "—"
-        }
-        return price.formatted(
-            .number
-                .precision(.fractionLength(2))
-                .grouping(.automatic)
-        )
     }
 }
 

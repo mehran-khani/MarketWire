@@ -27,7 +27,10 @@ struct AppFeatureStreamTests {
         }
 
         await store.receive(AppFeature.Action.marketEvent(tickerEvent)) {
-            $0.debugTicker = tickerSnapshot(from: tickerEvent)
+            $0.connectionState = .connected(since: testDate)
+            if case let .ticker(snapshot) = tickerEvent {
+                $0.markets.tickerBySymbolID = [snapshot.symbolID: snapshot]
+            }
         }
 
         await store.receive(AppFeature.Action.streamFinished) {
@@ -45,6 +48,45 @@ struct AppFeatureStreamTests {
         await store.send(AppFeature.Action.appStarted)
     }
 
+    @Test func appStartedIsIdempotentWhileConnected() async {
+        let store = TestStore(
+            initialState: AppFeature.State(connectionState: .connected(since: testDate))
+        ) {
+            AppFeature()
+        }
+
+        await store.send(AppFeature.Action.appStarted)
+    }
+
+    @Test func appStartedRestartsStreamFromDisconnected() async {
+        let store = TestStore(
+            initialState: AppFeature.State(connectionState: .disconnected(reason: "Stream ended"))
+        ) {
+            AppFeature()
+        } withDependencies: {
+            $0.marketData.stream = { _ in AsyncStream { $0.finish() } }
+        }
+
+        await store.send(AppFeature.Action.appStarted) {
+            $0.connectionState = .connecting
+            $0.lastError = nil
+        }
+
+        await store.receive(AppFeature.Action.streamFinished) {
+            $0.connectionState = .disconnected(reason: "Stream ended")
+        }
+    }
+
+    @Test func streamFinishedWhileConnectingMarksDisconnected() async {
+        let store = TestStore(initialState: AppFeature.State(connectionState: .connecting)) {
+            AppFeature()
+        }
+
+        await store.send(AppFeature.Action.streamFinished) {
+            $0.connectionState = .disconnected(reason: "Stream ended")
+        }
+    }
+
     @Test func providerErrorMarksConnectionFailed() async {
         let store = TestStore(initialState: AppFeature.State(connectionState: .connecting)) {
             AppFeature()
@@ -55,6 +97,19 @@ struct AppFeatureStreamTests {
         await store.send(AppFeature.Action.marketEvent(.providerError(message: "rate limit"))) {
             $0.connectionState = .failed(message: "rate limit")
             $0.lastError = "rate limit"
+        }
+    }
+
+    @Test func providerErrorWhileConnectedMarksFailed() async {
+        let store = TestStore(
+            initialState: AppFeature.State(connectionState: .connected(since: testDate))
+        ) {
+            AppFeature()
+        }
+
+        await store.send(AppFeature.Action.marketEvent(.providerError(message: "socket closed"))) {
+            $0.connectionState = .failed(message: "socket closed")
+            $0.lastError = "socket closed"
         }
     }
 }
@@ -87,11 +142,4 @@ private func tickerFixtureEvent() throws -> MarketEvent {
         throw Fixture.FixtureError.notFound("okx_ticker event")
     }
     return event
-}
-
-private func tickerSnapshot(from event: MarketEvent) -> TickerSnapshot? {
-    guard case let .ticker(snapshot) = event else {
-        return nil
-    }
-    return snapshot
 }
