@@ -5,7 +5,7 @@ struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
 
     private var activeSection: AppSection {
-        store.selectedSection ?? .markets
+        store.selectedSection ?? .watchlist
     }
 
     var body: some View {
@@ -55,7 +55,8 @@ struct AppView: View {
         switch activeSection {
         case .watchlist:
             WatchlistView(
-                store: store.scope(state: \.watchlist, action: \.watchlist)
+                store: store.scope(state: \.watchlist, action: \.watchlist),
+                connectionState: store.connectionState
             )
         case .markets:
             MarketsView(

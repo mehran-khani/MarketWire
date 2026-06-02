@@ -5,7 +5,7 @@ import Testing
 @MainActor
 struct MarketsFeatureTests {
     @Test func defaultSymbolsMatchOKXConfiguration() {
-        #expect(MarketsFeature.State().symbols == OKXConfiguration.defaultSymbolIDs)
+        #expect(MarketsFeature.State().symbols == OKXConfiguration.defaultMarketSymbolIDs)
     }
 
     @Test func symbolTappedEmitsDelegate() async {

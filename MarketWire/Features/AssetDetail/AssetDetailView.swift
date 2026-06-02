@@ -4,6 +4,12 @@ import SwiftUI
 struct AssetDetailView: View {
     let store: StoreOf<AssetDetailFeature>
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var presentation: TickerSnapshot.Presentation {
+        TickerSnapshot.presentation(for: store.ticker)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -16,11 +22,11 @@ struct AssetDetailView: View {
                     Text("Last price")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text(store.ticker.displayPriceOrPlaceholder)
+                    Text(presentation.priceText)
                         .font(.system(.title, design: .rounded, weight: .semibold))
                         .monospacedDigit()
-                        .contentTransition(.numericText(value: store.ticker.numericTextValue))
-                        .animation(.bouncy, value: store.ticker?.price)
+                        .contentTransition(.numericText(value: presentation.priceNumericValue))
+                        .animation(reduceMotion ? nil : .bouncy, value: presentation.snapshotPrice)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()

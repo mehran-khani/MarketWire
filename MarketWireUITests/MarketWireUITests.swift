@@ -6,37 +6,37 @@ final class MarketWireUITests: XCTestCase {
     }
 
     @MainActor
-    func testLaunchesIntoMarketsContent() throws {
+    func testLaunchesIntoWatchlistContent() throws {
         let app = XCUIApplication()
         app.launch()
-        openMarketsIfNeeded(app)
+        openSectionIfNeeded(app, title: "Watchlist", rowID: "watchlist-card-BTC-USDT")
 
-        XCTAssertTrue(app.navigationBars.staticTexts["Markets"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars.staticTexts["Watchlist"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["watchlist-card-BTC-USDT"].waitForExistence(timeout: 10))
     }
 
     @MainActor
-    func testMarketsSymbolOpensAndClosesDetail() throws {
+    func testWatchlistSymbolOpensAndClosesDetail() throws {
         let app = XCUIApplication()
         app.launch()
-        openMarketsIfNeeded(app)
+        openSectionIfNeeded(app, title: "Watchlist", rowID: "watchlist-card-BTC-USDT")
 
-        let row = app.buttons["market-row-BTC-USDT"]
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
-        row.tap()
+        let card = app.buttons["watchlist-card-BTC-USDT"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
 
         XCTAssertTrue(app.staticTexts["BTC-USDT"].waitForExistence(timeout: 10))
 
         app.navigationBars.buttons.element(boundBy: 0).tap()
 
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
     }
 
-    /// Compact split view may show the sidebar first — tap Markets once to reach content.
     @MainActor
-    private func openMarketsIfNeeded(_ app: XCUIApplication) {
-        if app.buttons["market-row-BTC-USDT"].waitForExistence(timeout: 2) {
+    private func openSectionIfNeeded(_ app: XCUIApplication, title: String, rowID: String) {
+        if app.buttons[rowID].waitForExistence(timeout: 2) {
             return
         }
-        app.staticTexts["Markets"].tap()
+        app.staticTexts[title].tap()
     }
 }

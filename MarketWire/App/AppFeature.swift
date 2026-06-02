@@ -6,7 +6,7 @@ import SwiftUI
 struct AppFeature {
     @ObservableState
     struct State: Equatable {
-        var selectedSection: AppSection? = .markets
+        var selectedSection: AppSection? = .watchlist
         var columnVisibility: NavigationSplitViewVisibility = .automatic
         var preferredCompactColumn: NavigationSplitViewColumn = .content
         var detail: AssetDetailFeature.State?
@@ -123,15 +123,12 @@ struct AppFeature {
                 }
                 return .none
 
-            case let .markets(.delegate(.assetSelected(symbolID))):
-                state.detail = AssetDetailFeature.State(
-                    symbolID: symbolID,
-                    ticker: state.markets.tickerBySymbolID[symbolID]
-                )
-                state.preferredCompactColumn = .detail
+            case let .markets(.delegate(.assetSelected(symbolID))),
+                 let .watchlist(.delegate(.assetSelected(symbolID))):
+                state.openAssetDetail(symbolID: symbolID)
                 return .none
 
-            case .markets:
+            case .markets, .watchlist:
                 return .none
 
             case .detail(.delegate(.closeRequested)):
@@ -142,7 +139,7 @@ struct AppFeature {
             case .detail:
                 return .none
 
-            case .watchlist, .alerts, .settings:
+            case .alerts, .settings:
                 return .none
             }
         }

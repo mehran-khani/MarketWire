@@ -27,13 +27,3 @@ extension TickerSnapshot {
         (price as NSDecimalNumber).doubleValue
     }
 }
-
-extension TickerSnapshot? {
-    nonisolated var displayPriceOrPlaceholder: String {
-        self?.displayPrice ?? "—"
-    }
-
-    nonisolated var numericTextValue: Double {
-        self?.numericTextValue ?? 0
-    }
-}

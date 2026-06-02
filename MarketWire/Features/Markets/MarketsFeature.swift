@@ -5,7 +5,7 @@ import Foundation
 struct MarketsFeature {
     @ObservableState
     struct State: Equatable {
-        var symbols: [Symbol.ID] = OKXConfiguration.defaultSymbolIDs
+        var symbols: [Symbol.ID] = OKXConfiguration.defaultMarketSymbolIDs
         var tickerBySymbolID: [Symbol.ID: TickerSnapshot] = [:]
     }
 

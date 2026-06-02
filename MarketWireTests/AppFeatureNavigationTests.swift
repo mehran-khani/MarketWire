@@ -130,8 +130,47 @@ struct AppFeatureNavigationTests {
         }
 
         await store.send(.marketEvent(tickerEvent)) {
+            $0.watchlist.tickerBySymbolID = [snapshot.symbolID: snapshot]
             $0.markets.tickerBySymbolID = [snapshot.symbolID: snapshot]
             $0.detail = AssetDetailFeature.State(symbolID: snapshot.symbolID, ticker: snapshot)
+        }
+    }
+
+    @Test func watchlistAssetSelectionOpensDetail() async {
+        let store = TestStore(initialState: AppFeature.State()) {
+            AppFeature()
+        }
+
+        await store.send(.watchlist(.symbolTapped("ETH-USDT")))
+
+        await store.receive(\.watchlist.delegate) {
+            $0.detail = AssetDetailFeature.State(symbolID: "ETH-USDT", ticker: nil)
+            $0.preferredCompactColumn = .detail
+        }
+    }
+
+    @Test func watchlistAssetSelectionUsesCachedTicker() async throws {
+        let tickerEvent = try tickerFixtureEventForTests()
+        guard case let .ticker(snapshot) = tickerEvent else {
+            Issue.record("expected ticker fixture")
+            return
+        }
+
+        let store = TestStore(
+            initialState: AppFeature.State(
+                watchlist: WatchlistFeature.State(
+                    tickerBySymbolID: [snapshot.symbolID: snapshot]
+                )
+            )
+        ) {
+            AppFeature()
+        }
+
+        await store.send(.watchlist(.symbolTapped(snapshot.symbolID)))
+
+        await store.receive(\.watchlist.delegate) {
+            $0.detail = AssetDetailFeature.State(symbolID: snapshot.symbolID, ticker: snapshot)
+            $0.preferredCompactColumn = .detail
         }
     }
 
@@ -151,6 +190,7 @@ struct AppFeatureNavigationTests {
         }
 
         await store.send(.marketEvent(tickerEvent)) {
+            $0.watchlist.tickerBySymbolID = [snapshot.symbolID: snapshot]
             $0.markets.tickerBySymbolID = [snapshot.symbolID: snapshot]
         }
     }
