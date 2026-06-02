@@ -2,34 +2,97 @@ import ComposableArchitecture
 import SwiftUI
 
 struct MarketsView: View {
-    let store: StoreOf<MarketsFeature>
+    @Bindable var store: StoreOf<MarketsFeature>
     let connectionState: ConnectionState
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Live prices from the OKX stream. Tap a pair for detail.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        Group {
+            switch store.loadState {
+            case .idle, .loading:
+                loadingBody
 
-                VStack(spacing: 12) {
-                    ForEach(store.symbols, id: \.self) { symbolID in
+            case let .failed(message):
+                failedBody(message: message)
+
+            case .loaded:
+                catalogBody
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task {
+            store.send(.catalogAppeared)
+        }
+    }
+
+    private var loadingBody: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+            Text("Loading spot markets…")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("markets-loading")
+    }
+
+    private func failedBody(message: String) -> some View {
+        VStack(spacing: 16) {
+            Text("Couldn’t load markets")
+                .font(.headline)
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("Try again") {
+                store.send(.catalogAppeared)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+        .accessibilityIdentifier("markets-load-failed")
+    }
+
+    @ViewBuilder
+    private var catalogBody: some View {
+        if store.instruments.isEmpty {
+            ContentUnavailableView(
+                "No spot markets",
+                systemImage: "chart.line.uptrend.xyaxis",
+                description: Text("OKX returned an empty instrument list.")
+            )
+        } else if store.filteredInstruments.isEmpty {
+            ContentUnavailableView.search(text: store.searchQuery)
+        } else {
+            List {
+                Section {
+                    Text("Tap a pair for detail. Live stream prices appear when subscribed.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .listRowBackground(Color.clear)
+                }
+
+                Section {
+                    ForEach(store.filteredInstruments) { symbol in
                         Button {
-                            store.send(.symbolTapped(symbolID))
+                            store.send(.symbolTapped(symbol.id))
                         } label: {
                             TickerCard(
-                                symbolID: symbolID,
-                                ticker: store.tickerBySymbolID[symbolID],
+                                symbolID: symbol.id,
+                                ticker: store.tickerBySymbolID[symbol.id],
                                 connectionState: connectionState
                             )
                         }
                         .buttonStyle(.plain)
-                        .accessibilityIdentifier("market-row-\(symbolID)")
+                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .accessibilityIdentifier("market-row-\(symbol.id)")
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
+            .listStyle(.plain)
+            .searchable(text: $store.searchQuery, prompt: "Search symbol or currency")
+            .accessibilityIdentifier("markets-catalog-list")
         }
     }
 }

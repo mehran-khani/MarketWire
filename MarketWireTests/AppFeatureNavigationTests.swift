@@ -10,8 +10,8 @@ struct AppFeatureNavigationTests {
             AppFeature()
         }
 
-        await store.send(\.binding.selectedSection, .watchlist) {
-            $0.selectedSection = .watchlist
+        await store.send(\.binding.selectedSection, .markets) {
+            $0.selectedSection = .markets
         }
 
         await store.send(\.binding.selectedSection, .settings) {
@@ -123,13 +123,17 @@ struct AppFeatureNavigationTests {
 
         let store = TestStore(
             initialState: AppFeature.State(
-                detail: AssetDetailFeature.State(symbolID: snapshot.symbolID, ticker: nil)
+                detail: AssetDetailFeature.State(symbolID: snapshot.symbolID, ticker: nil),
+                markets: MarketsFeature.State(
+                    instruments: [Symbol(id: snapshot.symbolID, base: "BTC", quote: "USDT")],
+                    loadState: .loaded
+                )
             )
         ) {
             AppFeature()
         }
 
-        await store.send(.marketEvent(tickerEvent)) {
+        await store.send(AppFeature.Action.marketEvent(tickerEvent)) {
             $0.watchlist.tickerBySymbolID = [snapshot.symbolID: snapshot]
             $0.markets.tickerBySymbolID = [snapshot.symbolID: snapshot]
             $0.detail = AssetDetailFeature.State(symbolID: snapshot.symbolID, ticker: snapshot)
@@ -183,13 +187,17 @@ struct AppFeatureNavigationTests {
 
         let store = TestStore(
             initialState: AppFeature.State(
-                detail: AssetDetailFeature.State(symbolID: "ETH-USDT", ticker: nil)
+                detail: AssetDetailFeature.State(symbolID: "ETH-USDT", ticker: nil),
+                markets: MarketsFeature.State(
+                    instruments: [Symbol(id: snapshot.symbolID, base: "BTC", quote: "USDT")],
+                    loadState: .loaded
+                )
             )
         ) {
             AppFeature()
         }
 
-        await store.send(.marketEvent(tickerEvent)) {
+        await store.send(AppFeature.Action.marketEvent(tickerEvent)) {
             $0.watchlist.tickerBySymbolID = [snapshot.symbolID: snapshot]
             $0.markets.tickerBySymbolID = [snapshot.symbolID: snapshot]
         }

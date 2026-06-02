@@ -30,7 +30,6 @@ struct AppFeatureStreamTests {
             $0.connectionState = .connected(since: testDate)
             if case let .ticker(snapshot) = tickerEvent {
                 $0.watchlist.tickerBySymbolID = [snapshot.symbolID: snapshot]
-                $0.markets.tickerBySymbolID = [snapshot.symbolID: snapshot]
             }
         }
 

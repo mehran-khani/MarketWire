@@ -6,7 +6,7 @@ extension AppFeature.State {
             watchlist.tickerBySymbolID[snapshot.symbolID] = snapshot
         }
 
-        if markets.symbols.contains(snapshot.symbolID) {
+        if markets.instrumentIDs.contains(snapshot.symbolID) {
             markets.tickerBySymbolID[snapshot.symbolID] = snapshot
         }
 
