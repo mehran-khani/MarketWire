@@ -6,9 +6,9 @@ import SwiftUI
 struct AppFeature {
     @ObservableState
     struct State: Equatable {
-        var selectedSection: AppSection? = .watchlist
+        var selectedSection: AppSection?
         var columnVisibility: NavigationSplitViewVisibility = .automatic
-        var preferredCompactColumn: NavigationSplitViewColumn = .content
+        var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
         var detail: AssetDetailFeature.State?
 
         var connectionState: ConnectionState = .idle

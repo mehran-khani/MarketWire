@@ -180,6 +180,7 @@ struct MarketsFeatureTests {
 
     @Test func quoteRefreshTickLoadsMarketTickers() async {
         let tickers = sampleMarketTickersForTests()
+        let testDate = Date(timeIntervalSince1970: 1_000)
         var initialState = MarketsFeature.State(loadState: .loaded, isQuotePollingActive: true)
         initialState.applyInstruments(sampleInstruments)
 
@@ -187,6 +188,7 @@ struct MarketsFeatureTests {
             MarketsFeature()
         } withDependencies: {
             $0.marketREST.fetchSpotMarketTickers = { tickers }
+            $0.date.now = testDate
         }
 
         await store.send(.quoteRefreshTick) {
@@ -196,11 +198,13 @@ struct MarketsFeatureTests {
         await store.receive(\.marketTickersLoaded) {
             $0.marketTickerBySymbolID = tickers
             $0.quoteRefreshState = .loaded
+            $0.quotesUpdatedAt = testDate
         }
     }
 
     @Test func quotePollingStartsAndStopsRefreshLoop() async {
         let clock = TestClock()
+        let testDate = Date(timeIntervalSince1970: 1_000)
         var initialState = MarketsFeature.State(loadState: .loaded)
         initialState.applyInstruments(sampleInstruments)
 
@@ -208,6 +212,7 @@ struct MarketsFeatureTests {
             MarketsFeature()
         } withDependencies: {
             $0.continuousClock = clock
+            $0.date.now = testDate
             $0.marketREST.fetchSpotMarketTickers = { sampleMarketTickersForTests() }
         }
         store.exhaustivity = .off
@@ -223,6 +228,7 @@ struct MarketsFeatureTests {
         await store.send(.setQuotePollingActive(false)) {
             $0.isQuotePollingActive = false
             $0.quoteRefreshState = .idle
+            $0.quotesUpdatedAt = nil
         }
     }
 

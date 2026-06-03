@@ -41,6 +41,7 @@ struct WatchlistView: View {
             }
         }
         .listStyle(.plain)
+        .marketContentScrollEdgeEffects()
         .accessibilityIdentifier("watchlist-favorites-list")
     }
 }

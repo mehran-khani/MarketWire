@@ -42,7 +42,21 @@ struct TickerCard: View {
         if marketTicker != nil {
             return false
         }
-        return ticker == nil && connectionState == .connecting
+        guard ticker == nil else { return false }
+        switch connectionState {
+        case .idle:
+            return false
+        case .connecting, .connected, .disconnected, .failed:
+            return true
+        }
+    }
+
+    private var usesLivePrice: Bool {
+        marketTicker == nil
+    }
+
+    private var reservesFreshnessLine: Bool {
+        marketTicker != nil || isLoadingPrice
     }
 
     var body: some View {
@@ -77,6 +91,10 @@ struct TickerCard: View {
                     .font(.caption2.weight(.medium))
                     .fontDesign(.monospaced)
                     .foregroundStyle(.tertiary)
+
+                if reservesFreshnessLine {
+                    freshnessCaptionLine
+                }
             }
 
             Spacer(minLength: 8)
@@ -116,7 +134,8 @@ struct TickerCard: View {
     private var change24hBadge: some View {
         if let changeText = presentation.changePercentText,
            let isUp = presentation.isUp24h,
-           let changeValue = presentation.changeNumericValue {
+           let changeValue = presentation.changeNumericValue
+        {
             HStack(spacing: 4) {
                 Image(systemName: isUp ? "arrow.up.right" : "arrow.down.right")
                     .font(.caption2.weight(.bold))
@@ -143,20 +162,60 @@ struct TickerCard: View {
         }
     }
 
+    private var freshnessCaptionLine: some View {
+        Text(freshnessCaption ?? " ")
+            .font(.caption2)
+            .foregroundStyle(freshnessCaptionStyle)
+            .opacity(freshnessCaption == nil ? 0 : 1)
+            .accessibilityHidden(freshnessCaption == nil)
+            .animation(reduceMotion ? nil : .smooth, value: freshnessCaption)
+    }
+
     private var loadingPriceLabel: String {
-        isLoadingPrice ? "Loading price…" : "Connecting…"
+        if isLoadingPrice {
+            return "Loading price…"
+        }
+        return connectionState.livePriceLoadingLabel
     }
 
     private var loadingPriceAccessibilityLabel: String {
-        isLoadingPrice ? "Loading price" : "Waiting for live price"
+        if isLoadingPrice {
+            return "Loading price"
+        }
+        return connectionState.livePriceAccessibilityHint
+    }
+
+    private var freshnessCaption: String? {
+        guard let marketTicker else { return nil }
+        let now = Date()
+        guard QuoteFreshness.isCatalogStale(since: marketTicker.updatedAt, now: now) else { return nil }
+        return "Stale · \(QuoteFreshness.relativeAgeDescription(since: marketTicker.updatedAt, now: now))"
+    }
+
+    private var freshnessCaptionStyle: Color {
+        guard let marketTicker else { return .secondary }
+        return QuoteFreshness.isCatalogStale(since: marketTicker.updatedAt, now: Date())
+            ? .orange
+            : .secondary
     }
 
     private var accessibilitySummary: String {
         var parts = [symbolID]
         if isWaitingForPrice {
-            parts.append(loadingPriceAccessibilityLabel.lowercased())
+            parts.append(loadingPriceAccessibilityLabel)
+            if usesLivePrice {
+                parts.append(connectionState.livePriceStatusLabel.lowercased())
+            }
         } else {
             parts.append(presentation.accessibilitySummary)
+            if let marketTicker {
+                parts.append(
+                    QuoteFreshness.rowAccessibilityFragment(
+                        updatedAt: marketTicker.updatedAt,
+                        now: Date()
+                    )
+                )
+            }
         }
         return parts.joined(separator: ", ")
     }

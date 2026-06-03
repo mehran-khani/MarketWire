@@ -27,6 +27,7 @@ struct MarketsFeature {
         var quoteRefreshState: QuoteRefreshState = .idle
         var filterQuery: String = ""
         var isQuotePollingActive = false
+        var quotesUpdatedAt: Date?
 
         var isSearchActive: Bool {
             !filterQuery.isEmpty
@@ -54,6 +55,7 @@ struct MarketsFeature {
 
     @Dependency(\.marketREST) var marketREST
     @Dependency(\.continuousClock) var clock
+    @Dependency(\.date) var date
 
     private nonisolated enum QuotePollID: Hashable, Sendable {
         case poll
@@ -98,6 +100,7 @@ struct MarketsFeature {
 
                 guard isActive else {
                     state.quoteRefreshState = .idle
+                    state.quotesUpdatedAt = nil
                     return .merge(
                         .cancel(id: QuotePollID.poll),
                         .cancel(id: QuotePollID.fetch)
@@ -117,6 +120,7 @@ struct MarketsFeature {
             case let .marketTickersLoaded(tickers):
                 state.marketTickerBySymbolID = tickers
                 state.quoteRefreshState = .loaded
+                state.quotesUpdatedAt = date.now
                 return .none
 
             case let .marketTickersFailed(message):

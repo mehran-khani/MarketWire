@@ -79,15 +79,6 @@ struct MarketsView: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
             } else if !store.filteredInstruments.isEmpty {
-                if !store.isSearchActive {
-                    Section {
-                        Text("Tap a pair for detail. Swipe or long-press to favorite. Prices refresh about every 3 seconds.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .listRowBackground(Color.clear)
-                    }
-                }
-
                 Section {
                     ForEach(store.filteredInstruments) { symbol in
                         TickerCard(
@@ -108,6 +99,10 @@ struct MarketsView: View {
             }
         }
         .listStyle(.plain)
+        .marketContentScrollEdgeEffects()
+        .safeAreaInset(edge: .top, spacing: 0) {
+            catalogAttentionBanner
+        }
         .searchable(text: $searchText, prompt: "Search symbol or currency")
         .onChange(of: searchText) { _, newValue in
             scheduleSearchFilterCommit(for: newValue)
@@ -161,5 +156,32 @@ struct MarketsView: View {
 
     private func isRowLoadingPrice(for symbolID: Symbol.ID) -> Bool {
         store.marketTickerBySymbolID[symbolID] == nil && store.quoteRefreshState == .loading
+    }
+
+    @ViewBuilder
+    private var catalogAttentionBanner: some View {
+        if case let .failed(message) = store.quoteRefreshState {
+            catalogAttentionLabel("Couldn't refresh prices · \(message)")
+        } else if let quotesUpdatedAt = store.quotesUpdatedAt {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                if let message = QuoteFreshness.catalogAttentionMessage(
+                    since: quotesUpdatedAt,
+                    now: context.date
+                ) {
+                    catalogAttentionLabel(message)
+                }
+            }
+        }
+    }
+
+    private func catalogAttentionLabel(_ message: String) -> some View {
+        Text(message)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.orange)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 8)
+            .background(.regularMaterial)
+            .accessibilityIdentifier("markets-quote-attention")
     }
 }
