@@ -20,6 +20,7 @@ struct AppFeatureStreamTests {
 
         await store.send(AppFeature.Action.appStarted) {
             $0.connectionState = .connecting
+            $0.subscribedStreamSymbolIDs = Set(OKXConfiguration.defaultWatchlistSymbolIDs)
         }
 
         await store.receive(AppFeature.Action.marketEvent(subscribeEvent)) {
@@ -70,6 +71,7 @@ struct AppFeatureStreamTests {
         await store.send(AppFeature.Action.appStarted) {
             $0.connectionState = .connecting
             $0.lastError = nil
+            $0.subscribedStreamSymbolIDs = Set(OKXConfiguration.defaultWatchlistSymbolIDs)
         }
 
         await store.receive(AppFeature.Action.streamFinished) {

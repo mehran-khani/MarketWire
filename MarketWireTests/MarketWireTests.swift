@@ -3,19 +3,19 @@ import Testing
 
 @MainActor
 struct MarketWireTests {
-    @Test func defaultSubscribeArgsTrackConfiguredSymbols() {
+    @Test func defaultSubscribeArgsTrackDefaultWatchlist() {
         let subscribedIDs = Set(OKXConfiguration.defaultSubscribeArgs.map(\.instId))
-        #expect(subscribedIDs == Set(OKXConfiguration.trackedSymbolIDs))
+        #expect(subscribedIDs == Set(OKXConfiguration.defaultWatchlistSymbolIDs))
     }
 
     @Test func defaultSubscribeArgsUseTickersChannelOnly() {
         #expect(OKXConfiguration.defaultSubscribeArgs.allSatisfy { $0.channel == "tickers" })
     }
 
-    @Test func trackedSymbolIDsIncludeWatchlistAndMarkets() {
-        #expect(OKXConfiguration.trackedSymbolIDs.contains("BTC-USDT"))
-        #expect(OKXConfiguration.trackedSymbolIDs.contains("ETH-USDT"))
-        #expect(OKXConfiguration.trackedSymbolIDs.contains("SOL-USDT"))
+    @Test func tickerSubscribeArgsMapsSymbolIDs() {
+        let args = OKXConfiguration.tickerSubscribeArgs(for: ["ETH-USDT", "BTC-USDT"])
+        #expect(args.map(\.instId) == ["ETH-USDT", "BTC-USDT"])
+        #expect(args.allSatisfy { $0.channel == "tickers" })
     }
 
     @Test func missingTickerPresentationUsesPlaceholder() {

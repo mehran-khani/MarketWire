@@ -20,16 +20,11 @@ nonisolated enum OKXConfiguration {
 
     static let defaultWatchlistSymbolIDs: [Symbol.ID] = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
 
-    static let defaultMarketSymbolIDs: [Symbol.ID] = ["BTC-USDT"]
-
-    static var trackedSymbolIDs: [Symbol.ID] {
-        var seen = Set<Symbol.ID>()
-        return (defaultWatchlistSymbolIDs + defaultMarketSymbolIDs).filter { seen.insert($0).inserted }
+    static func tickerSubscribeArgs(for symbolIDs: [Symbol.ID]) -> [OkxSubscribeArg] {
+        symbolIDs.map { OkxSubscribeArg(channel: "tickers", instId: $0) }
     }
 
-    static let defaultSubscribeArgs: [OkxSubscribeArg] = trackedSymbolIDs.map {
-        OkxSubscribeArg(channel: "tickers", instId: $0)
-    }
+    static let defaultSubscribeArgs: [OkxSubscribeArg] = tickerSubscribeArgs(for: defaultWatchlistSymbolIDs)
 
     static let connectTimeoutNanoseconds: UInt64 = 15_000_000_000
     static let pingIntervalNanoseconds: UInt64 = 20_000_000_000

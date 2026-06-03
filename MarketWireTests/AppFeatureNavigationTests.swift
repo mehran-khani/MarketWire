@@ -20,9 +20,7 @@ struct AppFeatureNavigationTests {
     }
 
     @Test func marketsAssetSelectionOpensDetailAndPrefersDetailColumn() async {
-        let store = TestStore(initialState: AppFeature.State()) {
-            AppFeature()
-        }
+        let store = navigationTestStore()
 
         await store.send(.markets(.symbolTapped("BTC-USDT")))
 
@@ -30,6 +28,8 @@ struct AppFeatureNavigationTests {
             $0.detail = AssetDetailFeature.State(symbolID: "BTC-USDT", ticker: nil)
             $0.preferredCompactColumn = .detail
         }
+
+        await store.finish()
     }
 
     @Test func marketsAssetSelectionUsesCachedTicker() async throws {
@@ -39,15 +39,13 @@ struct AppFeatureNavigationTests {
             return
         }
 
-        let store = TestStore(
+        let store = navigationTestStore(
             initialState: AppFeature.State(
                 watchlist: WatchlistFeature.State(
                     tickerBySymbolID: [snapshot.symbolID: snapshot]
                 )
             )
-        ) {
-            AppFeature()
-        }
+        )
 
         await store.send(.markets(.symbolTapped(snapshot.symbolID)))
 
@@ -55,17 +53,17 @@ struct AppFeatureNavigationTests {
             $0.detail = AssetDetailFeature.State(symbolID: snapshot.symbolID, ticker: snapshot)
             $0.preferredCompactColumn = .detail
         }
+
+        await store.finish()
     }
 
     @Test func assetDetailCloseClearsDetail() async {
-        let store = TestStore(
+        let store = navigationTestStore(
             initialState: AppFeature.State(
                 preferredCompactColumn: .detail,
                 detail: AssetDetailFeature.State(symbolID: "BTC-USDT", ticker: nil)
             )
-        ) {
-            AppFeature()
-        }
+        )
 
         await store.send(.detail(.closeTapped))
 
@@ -73,22 +71,24 @@ struct AppFeatureNavigationTests {
             $0.detail = nil
             $0.preferredCompactColumn = .content
         }
+
+        await store.finish()
     }
 
     @Test func detailNavigationPopClearsDetail() async {
-        let store = TestStore(
+        let store = navigationTestStore(
             initialState: AppFeature.State(
                 preferredCompactColumn: .detail,
                 detail: AssetDetailFeature.State(symbolID: "BTC-USDT", ticker: nil)
             )
-        ) {
-            AppFeature()
-        }
+        )
 
         await store.send(.detailNavigationPop) {
             $0.detail = nil
             $0.preferredCompactColumn = .content
         }
+
+        await store.finish()
     }
 
     @Test func detailNavigationPopIsNoOpWithoutDetail() async {
@@ -140,9 +140,7 @@ struct AppFeatureNavigationTests {
     }
 
     @Test func watchlistAssetSelectionOpensDetail() async {
-        let store = TestStore(initialState: AppFeature.State()) {
-            AppFeature()
-        }
+        let store = navigationTestStore()
 
         await store.send(.watchlist(.symbolTapped("ETH-USDT")))
 
@@ -150,6 +148,8 @@ struct AppFeatureNavigationTests {
             $0.detail = AssetDetailFeature.State(symbolID: "ETH-USDT", ticker: nil)
             $0.preferredCompactColumn = .detail
         }
+
+        await store.finish()
     }
 
     @Test func watchlistAssetSelectionUsesCachedTicker() async throws {
@@ -159,15 +159,13 @@ struct AppFeatureNavigationTests {
             return
         }
 
-        let store = TestStore(
+        let store = navigationTestStore(
             initialState: AppFeature.State(
                 watchlist: WatchlistFeature.State(
                     tickerBySymbolID: [snapshot.symbolID: snapshot]
                 )
             )
-        ) {
-            AppFeature()
-        }
+        )
 
         await store.send(.watchlist(.symbolTapped(snapshot.symbolID)))
 
@@ -175,6 +173,8 @@ struct AppFeatureNavigationTests {
             $0.detail = AssetDetailFeature.State(symbolID: snapshot.symbolID, ticker: snapshot)
             $0.preferredCompactColumn = .detail
         }
+
+        await store.finish()
     }
 
     @Test func tickerDoesNotUpdateDetailForDifferentSymbol() async throws {
@@ -212,14 +212,12 @@ struct AppFeatureNavigationTests {
     }
 
     @Test func marketsFavoriteToggleUpdatesWatchlist() async {
-        let store = TestStore(initialState: AppFeature.State()) {
-            AppFeature()
-        }
+        let store = navigationTestStore()
 
         await store.send(.markets(.favoriteToggled("DOGE-USDT")))
 
         await store.receive(\.markets.delegate) {
-            $0.watchlist.favoriteSymbolIDs.append("DOGE-USDT")
+            $0.watchlist.favoriteSymbolIDs = OKXConfiguration.defaultWatchlistSymbolIDs + ["DOGE-USDT"]
         }
 
         await store.send(.markets(.favoriteToggled("DOGE-USDT")))
@@ -227,17 +225,32 @@ struct AppFeatureNavigationTests {
         await store.receive(\.markets.delegate) {
             $0.watchlist.favoriteSymbolIDs = OKXConfiguration.defaultWatchlistSymbolIDs
         }
+
+        await store.finish()
     }
 
     @Test func watchlistFavoriteToggleUpdatesFavorites() async {
-        let store = TestStore(initialState: AppFeature.State()) {
-            AppFeature()
-        }
+        let store = navigationTestStore()
 
         await store.send(.watchlist(.favoriteToggled("BTC-USDT"))) {
             $0.watchlist.favoriteSymbolIDs = ["ETH-USDT", "SOL-USDT"]
         }
+
+        await store.finish()
     }
+}
+
+@MainActor
+private func navigationTestStore(
+    initialState: AppFeature.State = AppFeature.State()
+) -> TestStore<AppFeature.State, AppFeature.Action> {
+    let store = TestStore(initialState: initialState) {
+        AppFeature()
+    } withDependencies: {
+        $0.marketData.stream = AppFeatureTestSupport.finishingMarketStream
+    }
+    store.exhaustivity = .off
+    return store
 }
 
 private func tickerFixtureEventForTests() throws -> MarketEvent {
