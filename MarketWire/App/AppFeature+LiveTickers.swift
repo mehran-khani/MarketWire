@@ -6,10 +6,6 @@ extension AppFeature.State {
             watchlist.tickerBySymbolID[snapshot.symbolID] = snapshot
         }
 
-        if markets.instrumentIDs.contains(snapshot.symbolID) {
-            markets.tickerBySymbolID[snapshot.symbolID] = snapshot
-        }
-
         guard var detail, detail.symbolID == snapshot.symbolID else {
             return
         }
@@ -18,6 +14,6 @@ extension AppFeature.State {
     }
 
     func cachedTicker(for symbolID: Symbol.ID) -> TickerSnapshot? {
-        watchlist.tickerBySymbolID[symbolID] ?? markets.tickerBySymbolID[symbolID]
+        watchlist.tickerBySymbolID[symbolID]
     }
 }

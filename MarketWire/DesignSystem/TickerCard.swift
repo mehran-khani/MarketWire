@@ -3,12 +3,32 @@ import SwiftUI
 struct TickerCard: View {
     let symbolID: Symbol.ID
     let ticker: TickerSnapshot?
+    let marketTicker: MarketTicker?
     let connectionState: ConnectionState
+    let isLoadingPrice: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    init(
+        symbolID: Symbol.ID,
+        ticker: TickerSnapshot?,
+        connectionState: ConnectionState,
+        marketTicker: MarketTicker? = nil,
+        isLoadingPrice: Bool = false
+    ) {
+        self.symbolID = symbolID
+        self.ticker = ticker
+        self.marketTicker = marketTicker
+        self.connectionState = connectionState
+        self.isLoadingPrice = isLoadingPrice
+    }
+
     private var presentation: TickerSnapshot.Presentation {
-        TickerSnapshot.presentation(for: ticker)
+        if let marketTicker {
+            MarketTicker.presentation(for: marketTicker)
+        } else {
+            TickerSnapshot.presentation(for: ticker)
+        }
     }
 
     private var symbolLabels: (base: String, quote: String) {
@@ -16,7 +36,13 @@ struct TickerCard: View {
     }
 
     private var isWaitingForPrice: Bool {
-        ticker == nil && connectionState == .connecting
+        if isLoadingPrice {
+            return true
+        }
+        if marketTicker != nil {
+            return false
+        }
+        return ticker == nil && connectionState == .connecting
     }
 
     var body: some View {
@@ -70,12 +96,12 @@ struct TickerCard: View {
             HStack(spacing: 8) {
                 ProgressView()
                     .controlSize(.small)
-                Text("Connecting…")
+                Text(loadingPriceLabel)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityLabel("Waiting for live price")
+            .accessibilityLabel(loadingPriceAccessibilityLabel)
         } else {
             Text(presentation.priceText)
                 .font(.system(.title, design: .rounded, weight: .semibold))
@@ -117,10 +143,18 @@ struct TickerCard: View {
         }
     }
 
+    private var loadingPriceLabel: String {
+        isLoadingPrice ? "Loading price…" : "Connecting…"
+    }
+
+    private var loadingPriceAccessibilityLabel: String {
+        isLoadingPrice ? "Loading price" : "Waiting for live price"
+    }
+
     private var accessibilitySummary: String {
         var parts = [symbolID]
         if isWaitingForPrice {
-            parts.append("waiting for live price")
+            parts.append(loadingPriceAccessibilityLabel.lowercased())
         } else {
             parts.append(presentation.accessibilitySummary)
         }

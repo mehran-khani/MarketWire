@@ -10,52 +10,61 @@ struct MarketsFeature {
         case failed(String)
     }
 
+    enum QuoteRefreshState: Equatable, Sendable {
+        case idle
+        case loading
+        case loaded
+        case failed(String)
+    }
+
     @ObservableState
     struct State: Equatable {
         var instruments: [Symbol] = []
+        var filteredInstruments: [Symbol] = []
+        var instrumentSearchIndex: [Symbol.ID: SymbolSearchIndexEntry] = [:]
+        var marketTickerBySymbolID: [Symbol.ID: MarketTicker] = [:]
         var loadState: CatalogLoadState = .idle
-        var searchQuery: String = ""
-        var tickerBySymbolID: [Symbol.ID: TickerSnapshot] = [:]
+        var quoteRefreshState: QuoteRefreshState = .idle
+        var filterQuery: String = ""
+        var isQuotePollingActive = false
 
-        var filteredInstruments: [Symbol] {
-            guard !searchQuery.isEmpty else { return instruments }
-
-            let query = searchQuery.lowercased()
-            return instruments.filter { symbol in
-                symbol.id.lowercased().contains(query)
-                    || symbol.base.lowercased().contains(query)
-                    || symbol.quote.lowercased().contains(query)
-            }
-        }
-
-        var instrumentIDs: Set<Symbol.ID> {
-            Set(instruments.map(\.id))
+        var isSearchActive: Bool {
+            !filterQuery.isEmpty
         }
     }
 
-    enum Action: BindableAction, Equatable {
-        case binding(BindingAction<State>)
+    enum Action: Equatable {
         case catalogAppeared
         case instrumentsLoaded([Symbol])
         case instrumentsFailed(String)
+        case setQuotePollingActive(Bool)
+        case quoteRefreshTick
+        case marketTickersLoaded([Symbol.ID: MarketTicker])
+        case marketTickersFailed(String)
         case symbolTapped(Symbol.ID)
+        case favoriteToggled(Symbol.ID)
+        case searchFilterCommitted(String)
         case delegate(Delegate)
 
         enum Delegate: Equatable {
             case assetSelected(symbolID: Symbol.ID)
+            case toggleFavorite(symbolID: Symbol.ID)
         }
     }
 
     @Dependency(\.marketREST) var marketREST
+    @Dependency(\.continuousClock) var clock
+
+    private nonisolated enum QuotePollID: Hashable, Sendable {
+        case poll
+        case fetch
+    }
+
+    private nonisolated static let quotePollInterval: Duration = .seconds(3)
 
     var body: some Reducer<State, Action> {
-        BindingReducer()
-
         Reduce { state, action in
             switch action {
-            case .binding:
-                return .none
-
             case .catalogAppeared:
                 switch state.loadState {
                 case .loading, .loaded:
@@ -75,20 +84,82 @@ struct MarketsFeature {
                 }
 
             case let .instrumentsLoaded(instruments):
-                state.instruments = instruments
                 state.loadState = .loaded
-                return .none
+                state.applyInstruments(instruments)
+                return state.isQuotePollingActive ? startQuoteRefresh() : .none
 
             case let .instrumentsFailed(message):
                 state.loadState = .failed(message)
                 return .none
 
+            case let .setQuotePollingActive(isActive):
+                guard isActive != state.isQuotePollingActive else { return .none }
+                state.isQuotePollingActive = isActive
+
+                guard isActive else {
+                    state.quoteRefreshState = .idle
+                    return .merge(
+                        .cancel(id: QuotePollID.poll),
+                        .cancel(id: QuotePollID.fetch)
+                    )
+                }
+
+                guard state.loadState == .loaded else { return .none }
+                return startQuoteRefresh()
+
+            case .quoteRefreshTick:
+                guard state.isQuotePollingActive, state.loadState == .loaded else { return .none }
+                if state.marketTickerBySymbolID.isEmpty {
+                    state.quoteRefreshState = .loading
+                }
+                return fetchMarketTickers()
+
+            case let .marketTickersLoaded(tickers):
+                state.marketTickerBySymbolID = tickers
+                state.quoteRefreshState = .loaded
+                return .none
+
+            case let .marketTickersFailed(message):
+                if state.marketTickerBySymbolID.isEmpty {
+                    state.quoteRefreshState = .failed(message)
+                }
+                return .none
+
+            case let .searchFilterCommitted(query):
+                state.applyFilterQuery(query)
+                return .none
+
             case let .symbolTapped(symbolID):
                 return .send(.delegate(.assetSelected(symbolID: symbolID)))
+
+            case let .favoriteToggled(symbolID):
+                return .send(.delegate(.toggleFavorite(symbolID: symbolID)))
 
             case .delegate:
                 return .none
             }
         }
+    }
+
+    private func startQuoteRefresh() -> Effect<Action> {
+        .run { [clock] send in
+            await send(.quoteRefreshTick)
+            for await _ in clock.timer(interval: Self.quotePollInterval) {
+                await send(.quoteRefreshTick)
+            }
+        }
+        .cancellable(id: QuotePollID.poll, cancelInFlight: true)
+    }
+
+    private func fetchMarketTickers() -> Effect<Action> {
+        .run { [marketREST] send in
+            do {
+                let tickers = try await marketREST.fetchSpotMarketTickers()
+                await send(.marketTickersLoaded(tickers))
+            } catch {
+                await send(.marketTickersFailed(error.localizedDescription))
+            }
+        }
+        .cancellable(id: QuotePollID.fetch, cancelInFlight: true)
     }
 }
