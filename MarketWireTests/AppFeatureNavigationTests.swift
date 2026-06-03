@@ -41,7 +41,7 @@ struct AppFeatureNavigationTests {
 
         let store = TestStore(
             initialState: AppFeature.State(
-                markets: MarketsFeature.State(
+                watchlist: WatchlistFeature.State(
                     tickerBySymbolID: [snapshot.symbolID: snapshot]
                 )
             )
@@ -135,7 +135,6 @@ struct AppFeatureNavigationTests {
 
         await store.send(AppFeature.Action.marketEvent(tickerEvent)) {
             $0.watchlist.tickerBySymbolID = [snapshot.symbolID: snapshot]
-            $0.markets.tickerBySymbolID = [snapshot.symbolID: snapshot]
             $0.detail = AssetDetailFeature.State(symbolID: snapshot.symbolID, ticker: snapshot)
         }
     }
@@ -199,7 +198,6 @@ struct AppFeatureNavigationTests {
 
         await store.send(AppFeature.Action.marketEvent(tickerEvent)) {
             $0.watchlist.tickerBySymbolID = [snapshot.symbolID: snapshot]
-            $0.markets.tickerBySymbolID = [snapshot.symbolID: snapshot]
         }
     }
 
@@ -210,6 +208,34 @@ struct AppFeatureNavigationTests {
 
         await store.send(\.binding.columnVisibility, .all) {
             $0.columnVisibility = .all
+        }
+    }
+
+    @Test func marketsFavoriteToggleUpdatesWatchlist() async {
+        let store = TestStore(initialState: AppFeature.State()) {
+            AppFeature()
+        }
+
+        await store.send(.markets(.favoriteToggled("DOGE-USDT")))
+
+        await store.receive(\.markets.delegate) {
+            $0.watchlist.favoriteSymbolIDs.append("DOGE-USDT")
+        }
+
+        await store.send(.markets(.favoriteToggled("DOGE-USDT")))
+
+        await store.receive(\.markets.delegate) {
+            $0.watchlist.favoriteSymbolIDs = OKXConfiguration.defaultWatchlistSymbolIDs
+        }
+    }
+
+    @Test func watchlistFavoriteToggleUpdatesFavorites() async {
+        let store = TestStore(initialState: AppFeature.State()) {
+            AppFeature()
+        }
+
+        await store.send(.watchlist(.favoriteToggled("BTC-USDT"))) {
+            $0.watchlist.favoriteSymbolIDs = ["ETH-USDT", "SOL-USDT"]
         }
     }
 }

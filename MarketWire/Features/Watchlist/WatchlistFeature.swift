@@ -11,6 +11,7 @@ struct WatchlistFeature {
 
     enum Action: Equatable {
         case symbolTapped(Symbol.ID)
+        case favoriteToggled(Symbol.ID)
         case delegate(Delegate)
 
         enum Delegate: Equatable {
@@ -19,10 +20,14 @@ struct WatchlistFeature {
     }
 
     var body: some Reducer<State, Action> {
-        Reduce { _, action in
+        Reduce { state, action in
             switch action {
             case let .symbolTapped(symbolID):
                 return .send(.delegate(.assetSelected(symbolID: symbolID)))
+
+            case let .favoriteToggled(symbolID):
+                state.toggleFavorite(symbolID: symbolID)
+                return .none
 
             case .delegate:
                 return .none

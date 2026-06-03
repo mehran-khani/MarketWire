@@ -128,6 +128,10 @@ struct AppFeature {
                 state.openAssetDetail(symbolID: symbolID)
                 return .none
 
+            case let .markets(.delegate(.toggleFavorite(symbolID: symbolID))):
+                state.watchlist.toggleFavorite(symbolID: symbolID)
+                return .none
+
             case .markets, .watchlist:
                 return .none
 

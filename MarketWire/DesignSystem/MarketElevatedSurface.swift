@@ -6,7 +6,7 @@ struct MarketElevatedSurface: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background(.regularMaterial, in: .rect(cornerRadius: cornerRadius))
-            .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+            .shadow(color: .black.opacity(0.1), radius: 10, y: 4)
     }
 }
 

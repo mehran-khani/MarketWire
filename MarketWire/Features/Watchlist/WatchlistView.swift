@@ -6,40 +6,41 @@ struct WatchlistView: View {
     let connectionState: ConnectionState
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if store.favoriteSymbolIDs.isEmpty {
-                    emptyState
-                } else {
-                    favoritesGrid
-                }
+        Group {
+            if store.favoriteSymbolIDs.isEmpty {
+                emptyState
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding()
+            } else {
+                favoritesList
             }
-            .padding()
         }
     }
 
     private var emptyState: some View {
         SectionPlaceholderView(
             title: "No symbols yet",
-            subtitle: "Add favorites from Markets in a later step."
+            subtitle: "Open Markets, then swipe or long-press a pair to add it here."
         )
     }
 
-    private var favoritesGrid: some View {
-        VStack(spacing: 12) {
+    private var favoritesList: some View {
+        List {
             ForEach(store.favoriteSymbolIDs, id: \.self) { symbolID in
-                Button {
-                    store.send(.symbolTapped(symbolID))
-                } label: {
-                    TickerCard(
-                        symbolID: symbolID,
-                        ticker: store.tickerBySymbolID[symbolID],
-                        connectionState: connectionState
-                    )
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("watchlist-card-\(symbolID)")
+                TickerCard(
+                    symbolID: symbolID,
+                    ticker: store.tickerBySymbolID[symbolID],
+                    connectionState: connectionState
+                )
+                .tickerCardFavoriteListRow(
+                    isFavorite: true,
+                    accessibilityIdentifier: "watchlist-card-\(symbolID)",
+                    onSelect: { store.send(.symbolTapped(symbolID)) },
+                    onFavoriteToggle: { store.send(.favoriteToggled(symbolID)) }
+                )
             }
         }
+        .listStyle(.plain)
+        .accessibilityIdentifier("watchlist-favorites-list")
     }
 }
