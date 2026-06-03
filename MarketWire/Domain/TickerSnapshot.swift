@@ -16,24 +16,10 @@ nonisolated struct TickerSnapshot: Equatable, Sendable {
 
 extension TickerSnapshot {
     nonisolated var displayPrice: String {
-        price.formatted(
-            .number
-                .precision(.fractionLength(2))
-                .grouping(.automatic)
-        )
+        PriceFormatting.displayPrice(price)
     }
 
     nonisolated var numericTextValue: Double {
         (price as NSDecimalNumber).doubleValue
-    }
-}
-
-extension TickerSnapshot? {
-    nonisolated var displayPriceOrPlaceholder: String {
-        self?.displayPrice ?? "—"
-    }
-
-    nonisolated var numericTextValue: Double {
-        self?.numericTextValue ?? 0
     }
 }

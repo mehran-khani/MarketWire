@@ -6,9 +6,9 @@ import SwiftUI
 struct AppFeature {
     @ObservableState
     struct State: Equatable {
-        var selectedSection: AppSection? = .markets
+        var selectedSection: AppSection?
         var columnVisibility: NavigationSplitViewVisibility = .automatic
-        var preferredCompactColumn: NavigationSplitViewColumn = .content
+        var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
         var detail: AssetDetailFeature.State?
 
         var connectionState: ConnectionState = .idle
@@ -18,6 +18,7 @@ struct AppFeature {
         var markets = MarketsFeature.State()
         var alerts = AlertsFeature.State()
         var settings = SettingsFeature.State()
+        var subscribedStreamSymbolIDs: Set<Symbol.ID> = []
     }
 
     enum Action: BindableAction, Equatable {
@@ -33,7 +34,7 @@ struct AppFeature {
         case detail(AssetDetailFeature.Action)
     }
 
-    private nonisolated enum CancelID: Hashable, Sendable {
+    nonisolated enum CancelID: Hashable, Sendable {
         case marketStream
     }
 
@@ -67,7 +68,7 @@ struct AppFeature {
                 guard state.detail != nil else { return .none }
                 state.detail = nil
                 state.preferredCompactColumn = .content
-                return .none
+                return refreshMarketStream(state: &state)
 
             case .appStarted:
                 switch state.connectionState {
@@ -77,18 +78,7 @@ struct AppFeature {
                     break
                 }
 
-                state.connectionState = .connecting
-                state.lastError = nil
-
-                return .run { send in
-                    @Dependency(\.marketData) var marketData
-                    let stream = await marketData.stream(OKXConfiguration.defaultSubscribeArgs)
-                    for await event in stream {
-                        await send(.marketEvent(event))
-                    }
-                    await send(.streamFinished)
-                }
-                .cancellable(id: CancelID.marketStream, cancelInFlight: true)
+                return startMarketStream(state: &state)
 
             case let .marketEvent(event):
                 switch event {
@@ -123,26 +113,30 @@ struct AppFeature {
                 }
                 return .none
 
-            case let .markets(.delegate(.assetSelected(symbolID))):
-                state.detail = AssetDetailFeature.State(
-                    symbolID: symbolID,
-                    ticker: state.markets.tickerBySymbolID[symbolID]
-                )
-                state.preferredCompactColumn = .detail
-                return .none
+            case let .markets(.delegate(.assetSelected(symbolID))),
+                 let .watchlist(.delegate(.assetSelected(symbolID))):
+                state.openAssetDetail(symbolID: symbolID)
+                return refreshMarketStream(state: &state)
 
-            case .markets:
+            case let .markets(.delegate(.toggleFavorite(symbolID: symbolID))):
+                state.watchlist.toggleFavorite(symbolID: symbolID)
+                return refreshMarketStream(state: &state)
+
+            case .watchlist(.favoriteToggled):
+                return refreshMarketStream(state: &state)
+
+            case .markets, .watchlist:
                 return .none
 
             case .detail(.delegate(.closeRequested)):
                 state.detail = nil
                 state.preferredCompactColumn = .content
-                return .none
+                return refreshMarketStream(state: &state)
 
             case .detail:
                 return .none
 
-            case .watchlist, .alerts, .settings:
+            case .alerts, .settings:
                 return .none
             }
         }

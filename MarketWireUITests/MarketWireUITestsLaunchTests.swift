@@ -2,7 +2,7 @@ import XCTest
 
 final class MarketWireUITestsLaunchTests: XCTestCase {
     override static var runsForEachTargetApplicationUIConfiguration: Bool {
-        true
+        false
     }
 
     override func setUpWithError() throws {

@@ -3,9 +3,14 @@ import SwiftUI
 
 struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
+    @Environment(\.scenePhase) private var scenePhase
 
-    private var activeSection: AppSection {
-        store.selectedSection ?? .markets
+    private var isMarketsQuotePollingActive: Bool {
+        store.selectedSection == .markets && scenePhase == .active
+    }
+
+    private var favoriteSymbolIDs: Set<Symbol.ID> {
+        Set(store.watchlist.favoriteSymbolIDs)
     }
 
     var body: some View {
@@ -16,9 +21,10 @@ struct AppView: View {
             sidebar
         } content: {
             contentColumn
-                .navigationTitle(activeSection.title)
+                .navigationTitle(store.selectedSection?.title ?? "MarketWire")
+                .marketNavigationBarScrollEffects()
                 .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         ConnectionStatusControl(
                             connectionState: store.connectionState,
                             lastError: store.lastError,
@@ -52,23 +58,30 @@ struct AppView: View {
 
     @ViewBuilder
     private var contentColumn: some View {
-        switch activeSection {
-        case .watchlist:
+        switch store.selectedSection {
+        case .watchlist?:
             WatchlistView(
-                store: store.scope(state: \.watchlist, action: \.watchlist)
-            )
-        case .markets:
-            MarketsView(
-                store: store.scope(state: \.markets, action: \.markets),
+                store: store.scope(state: \.watchlist, action: \.watchlist),
                 connectionState: store.connectionState
             )
-        case .alerts:
+        case .markets?:
+            MarketsView(
+                store: store.scope(state: \.markets, action: \.markets),
+                favoriteSymbolIDs: favoriteSymbolIDs,
+                isQuotePollingActive: isMarketsQuotePollingActive
+            )
+        case .alerts?:
             AlertsView(
                 store: store.scope(state: \.alerts, action: \.alerts)
             )
-        case .settings:
+        case .settings?:
             SettingsView(
                 store: store.scope(state: \.settings, action: \.settings)
+            )
+        case nil:
+            SectionPlaceholderView(
+                title: "MarketWire",
+                subtitle: "Choose a section from the sidebar."
             )
         }
     }
@@ -76,101 +89,15 @@ struct AppView: View {
     @ViewBuilder
     private var detailColumn: some View {
         if let detailStore = store.scope(state: \.detail, action: \.detail) {
-            AssetDetailView(store: detailStore)
+            AssetDetailView(
+                store: detailStore,
+                connectionState: store.connectionState
+            )
         } else {
             SectionPlaceholderView(
                 title: "Detail",
                 subtitle: "Select a symbol from Markets to open asset detail."
             )
-        }
-    }
-}
-
-private struct ConnectionStatusControl: View {
-    let connectionState: ConnectionState
-    let lastError: String?
-    let onReconnect: () -> Void
-
-    private var canReconnect: Bool {
-        switch connectionState {
-        case .disconnected, .failed:
-            true
-        default:
-            false
-        }
-    }
-
-    var body: some View {
-        Group {
-            if canReconnect {
-                Button(action: onReconnect) {
-                    statusLabel
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("Double tap to reconnect")
-            } else {
-                statusLabel
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("connection-status")
-        .accessibilityLabel(accessibilityLabelText)
-        .help(lastError ?? "")
-    }
-
-    private var statusLabel: some View {
-        Label(connectionLabel, systemImage: connectionSymbol)
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(connectionColor)
-    }
-
-    private var accessibilityLabelText: String {
-        if let lastError, !lastError.isEmpty {
-            return "\(connectionLabel). \(lastError)"
-        }
-        return connectionLabel
-    }
-
-    private var connectionLabel: String {
-        switch connectionState {
-        case .idle:
-            "Idle"
-        case .connecting:
-            "Connecting…"
-        case .connected:
-            "Live"
-        case let .disconnected(reason):
-            reason.map { "Disconnected: \($0). Tap to reconnect." } ?? "Disconnected. Tap to reconnect."
-        case let .failed(message):
-            "Failed: \(message). Tap to reconnect."
-        }
-    }
-
-    private var connectionSymbol: String {
-        switch connectionState {
-        case .connected:
-            "wifi"
-        case .connecting:
-            "arrow.triangle.2.circlepath"
-        case .failed:
-            "exclamationmark.triangle"
-        case .disconnected:
-            "wifi.slash"
-        case .idle:
-            "circle"
-        }
-    }
-
-    private var connectionColor: Color {
-        switch connectionState {
-        case .connected:
-            .green
-        case .connecting:
-            .orange
-        case .failed:
-            .red
-        case .disconnected, .idle:
-            .secondary
         }
     }
 }

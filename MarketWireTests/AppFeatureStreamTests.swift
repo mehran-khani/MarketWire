@@ -20,6 +20,7 @@ struct AppFeatureStreamTests {
 
         await store.send(AppFeature.Action.appStarted) {
             $0.connectionState = .connecting
+            $0.subscribedStreamSymbolIDs = Set(OKXConfiguration.defaultWatchlistSymbolIDs)
         }
 
         await store.receive(AppFeature.Action.marketEvent(subscribeEvent)) {
@@ -29,7 +30,7 @@ struct AppFeatureStreamTests {
         await store.receive(AppFeature.Action.marketEvent(tickerEvent)) {
             $0.connectionState = .connected(since: testDate)
             if case let .ticker(snapshot) = tickerEvent {
-                $0.markets.tickerBySymbolID = [snapshot.symbolID: snapshot]
+                $0.watchlist.tickerBySymbolID = [snapshot.symbolID: snapshot]
             }
         }
 
@@ -70,6 +71,7 @@ struct AppFeatureStreamTests {
         await store.send(AppFeature.Action.appStarted) {
             $0.connectionState = .connecting
             $0.lastError = nil
+            $0.subscribedStreamSymbolIDs = Set(OKXConfiguration.defaultWatchlistSymbolIDs)
         }
 
         await store.receive(AppFeature.Action.streamFinished) {
