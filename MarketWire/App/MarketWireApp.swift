@@ -7,6 +7,10 @@ struct MarketWireApp: App {
         AppFeature()
     }
 
+    init() {
+        MarketNavigationTitleTypography.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
             AppView(store: store)

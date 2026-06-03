@@ -5,12 +5,8 @@ struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
     @Environment(\.scenePhase) private var scenePhase
 
-    private var activeSection: AppSection {
-        store.selectedSection ?? .watchlist
-    }
-
     private var isMarketsQuotePollingActive: Bool {
-        activeSection == .markets && scenePhase == .active
+        store.selectedSection == .markets && scenePhase == .active
     }
 
     private var favoriteSymbolIDs: Set<Symbol.ID> {
@@ -25,9 +21,10 @@ struct AppView: View {
             sidebar
         } content: {
             contentColumn
-                .navigationTitle(activeSection.title)
+                .navigationTitle(store.selectedSection?.title ?? "MarketWire")
+                .marketNavigationBarScrollEffects()
                 .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         ConnectionStatusControl(
                             connectionState: store.connectionState,
                             lastError: store.lastError,
@@ -61,25 +58,30 @@ struct AppView: View {
 
     @ViewBuilder
     private var contentColumn: some View {
-        switch activeSection {
-        case .watchlist:
+        switch store.selectedSection {
+        case .watchlist?:
             WatchlistView(
                 store: store.scope(state: \.watchlist, action: \.watchlist),
                 connectionState: store.connectionState
             )
-        case .markets:
+        case .markets?:
             MarketsView(
                 store: store.scope(state: \.markets, action: \.markets),
                 favoriteSymbolIDs: favoriteSymbolIDs,
                 isQuotePollingActive: isMarketsQuotePollingActive
             )
-        case .alerts:
+        case .alerts?:
             AlertsView(
                 store: store.scope(state: \.alerts, action: \.alerts)
             )
-        case .settings:
+        case .settings?:
             SettingsView(
                 store: store.scope(state: \.settings, action: \.settings)
+            )
+        case nil:
+            SectionPlaceholderView(
+                title: "MarketWire",
+                subtitle: "Choose a section from the sidebar."
             )
         }
     }
@@ -87,7 +89,10 @@ struct AppView: View {
     @ViewBuilder
     private var detailColumn: some View {
         if let detailStore = store.scope(state: \.detail, action: \.detail) {
-            AssetDetailView(store: detailStore)
+            AssetDetailView(
+                store: detailStore,
+                connectionState: store.connectionState
+            )
         } else {
             SectionPlaceholderView(
                 title: "Detail",

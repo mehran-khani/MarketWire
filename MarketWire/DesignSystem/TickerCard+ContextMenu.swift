@@ -57,7 +57,14 @@ extension View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier(accessibilityIdentifier)
             .favoriteSwipeAction(isFavorite: isFavorite, onToggle: onFavoriteToggle)
-            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+            .listRowInsets(
+                EdgeInsets(
+                    top: MarketMetrics.cardListRowVerticalInset,
+                    leading: 16,
+                    bottom: MarketMetrics.cardListRowVerticalInset,
+                    trailing: 16
+                )
+            )
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
     }
